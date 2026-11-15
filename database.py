@@ -2,12 +2,10 @@ import sqlite3
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_DIR = BASE_DIR / "instance"
-DB_PATH = DB_DIR / "smartroom.db"
+DB_PATH = Path("/data/smartroom.db")
 
 
 def get_connection():
-    DB_DIR.mkdir(exist_ok=True)
     connection = sqlite3.connect(DB_PATH)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
