@@ -85,10 +85,27 @@
     camera.position.set(0, 15, 25);
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        const isMobile = window.innerWidth < 768;
+
+    let renderer;
+    try {
+        renderer = new THREE.WebGLRenderer({
+            antialias: !isMobile,
+            logarithmicDepthBuffer: false,
+            powerPreference: "high-performance"
+        });
+    } catch (e) {
+        document.getElementById('3d-container').innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #475569; text-align: center; padding: 20px;">
+                <p>Ваш браузер не поддерживает 3D-графику (WebGL).<br>Попробуйте открыть сайт в Chrome или Safari.</p>
+            </div>
+        `;
+        throw e;
+    }
+
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
+    renderer.setPixelRatio(isMobile ? 1 : window.devicePixelRatio);
+    renderer.shadowMap.enabled = !isMobile;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
