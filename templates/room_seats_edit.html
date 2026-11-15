@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Управление местами: Аудитория {{ room.name }}</h2>
+    <a href="/rooms" style="font-size: 14px;">← Назад к списку</a>
+</div>
+
+<div class="card">
+    <h3>Добавить место</h3>
+    <form action="/rooms/{{ room.id }}/seats/add" method="POST" class="inline-form">
+        <input type="text" name="seat_number" placeholder="Номер места (напр. 1)" required>
+        <label class="checkbox-label">
+            <input type="checkbox" name="has_socket"> Розетка
+        </label>
+        <label class="checkbox-label">
+            <input type="checkbox" name="is_computer"> Компьютер
+        </label>
+        <button type="submit" class="btn-primary">Добавить место</button>
+    </form>
+</div>
+
+<div class="card mt-20">
+    <h3>Список мест</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Номер места</th>
+                <th>Розетка</th>
+                <th>Компьютер</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for seat in seats %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ seat.seat_number }}</td>
+                <td>{{ "Да" if seat.has_socket else "Нет" }}</td>
+                <td>{{ "Да" if seat.is_computer else "Нет" }}</td>
+                <td>
+                    <form action="/rooms/{{ room.id }}/seats/delete/{{ seat.id }}" method="POST" class="inline-action">
+                        <button type="submit" class="btn-icon text-red" title="Удалить"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center">Мест пока нет.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

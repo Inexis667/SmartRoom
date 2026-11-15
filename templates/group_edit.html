@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Редактирование группы {{ group.name }}</h2>
+    <a href="/groups" style="font-size: 14px;">← Назад к списку</a>
+</div>
+
+<div class="card">
+    <form action="/groups/edit/{{ group.id }}" method="POST" class="inline-form">
+        <input type="text" name="name" value="{{ group.name }}" placeholder="Название" required>
+        <input type="number" name="students_count" value="{{ group.students_count }}" placeholder="Кол-во студентов" min="1" required>
+
+        <button type="submit" class="btn-primary">Сохранить изменения</button>
+    </form>
+</div>
+{% endblock %}

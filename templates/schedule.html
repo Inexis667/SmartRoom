@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Расписание занятий</h2>
+</div>
+
+<!-- Форма добавления -->
+<div class="card">
+    <h3>Добавить занятие</h3>
+    <form action="/schedule/add" method="POST" class="grid-form">
+        <div class="form-group">
+            <label>Дата</label>
+            <input type="date" name="lesson_date" required>
+        </div>
+        <div class="form-group">
+            <label>Начало</label>
+            <input type="time" name="start_time" id="start_time" required>
+        </div>
+        <div class="form-group">
+            <label>Окончание (авто +80 мин)</label>
+            <input type="time" name="end_time" id="end_time" required>
+        </div>
+        <div class="form-group">
+            <label>Группа</label>
+            <select name="group_id" required>
+                <option value="">Выберите группу</option>
+                {% for group in groups %}
+                    <option value="{{ group.id }}">{{ group.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Преподаватель</label>
+            <select name="teacher_id" required>
+                <option value="">Выберите преподавателя</option>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Предмет</label>
+            <select name="subject_id" required>
+                <option value="">Выберите предмет</option>
+                {% for subject in subjects %}
+                    <option value="{{ subject.id }}">{{ subject.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Аудитория</label>
+            <select name="room_id" required>
+                <option value="">Выберите кабинет</option>
+                {% for room in rooms %}
+                    <option value="{{ room.id }}">{{ room.name }} (до {{ room.capacity }} чел.)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn-primary" style="width: 100%;">Добавить занятие</button>
+        </div>
+    </form>
+</div>
+
+<!-- Фильтры и расписание -->
+<div class="card mt-20">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+        <h3>Сетка расписания</h3>
+
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <!-- КНОПКИ ПЕРЕКЛЮЧЕНИЯ СМЕН -->
+            <div style="display: flex; background: #e2e8f0; border-radius: 8px; padding: 4px;">
+                <a href="/schedule?shift=1{% if current_group %}&group={{ current_group }}{% endif %}{% if current_teacher %}&teacher={{ current_teacher }}{% endif %}"
+                   style="padding: 6px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; {% if current_shift == '1' %}background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);{% else %}color: var(--text-muted);{% endif %}">
+                    1 смена
+                </a>
+                <a href="/schedule?shift=2{% if current_group %}&group={{ current_group }}{% endif %}{% if current_teacher %}&teacher={{ current_teacher }}{% endif %}"
+                   style="padding: 6px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; {% if current_shift == '2' %}background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);{% else %}color: var(--text-muted);{% endif %}">
+                    2 смена
+                </a>
+                <a href="/schedule{% if current_group %}?group={{ current_group }}{% endif %}{% if current_teacher %}&teacher={{ current_teacher }}{% endif %}"
+                   style="padding: 6px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; {% if not current_shift %}background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);{% else %}color: var(--text-muted);{% endif %}">
+                    Все
+                </a>
+            </div>
+
+            <!-- ФИЛЬТРЫ -->
+            <form method="GET" action="/schedule" style="display: flex; gap: 10px;">
+                <input type="hidden" name="shift" value="{{ current_shift }}">
+                <select name="group" onchange="this.form.submit()" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                    <option value="">Все группы</option>
+                    {% for g in groups %}
+                        <option value="{{ g.name }}" {% if current_group == g.name %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="teacher" onchange="this.form.submit()" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                    <option value="">Все преподаватели</option>
+                    {% for t in teachers %}
+                        <option value="{{ t.full_name }}" {% if current_teacher == t.full_name %}selected{% endif %}>{{ t.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    {% set day_names = {1: "Понедельник", 2: "Вторник", 3: "Среда", 4: "Четверг", 5: "Пятница"} %}
+
+    {% for day_num, day_name in day_names.items() %}
+        {% set day_lessons = lessons | selectattr("weekday", "equalto", day_num) | list %}
+
+        {% if day_lessons %}
+            <h2 style="margin-top: 30px; color: #1e293b; border-bottom: 2px solid #cbd5e1; padding-bottom: 10px;">
+                {{ day_name }}
+            </h2>
+
+            <table class="data-table" style="margin-top: 10px;">
+                <thead>
+                    <tr>
+                        <th>Группа</th>
+                        <th>Время</th>
+                        <th>Предмет</th>
+                        <th>Преподаватель</th>
+                        <th>Аудитория</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set ns = namespace(current_group="") %}
+                    {% for lesson in day_lessons %}
+                        {% if ns.current_group != lesson.group_name %}
+                            {% set ns.current_group = lesson.group_name %}
+                            <tr style="background: #f8fafc;">
+                                <td colspan="6" style="padding: 8px; font-weight: bold; color: var(--primary);">
+                                    Группа: {{ lesson.group_name }}
+                                </td>
+                            </tr>
+                        {% endif %}
+                        <tr>
+                            <td></td>
+                            <td>{{ lesson.start_time }} — {{ lesson.end_time }}</td>
+                            <td><strong>{{ lesson.subject_name }}</strong></td>
+                            <td>{{ lesson.teacher_name }}</td>
+                            <td><strong>{{ lesson.room_name }}</strong></td>
+                            <td>
+                                <form action="/schedule/delete/{{ lesson.id }}" method="POST" class="inline-action">
+                                    <button type="submit" class="btn-icon text-red" title="Отменить пару"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endfor %}
+
+    {% if not lessons %}
+        <p class="text-center" style="padding: 40px;">Расписание пока пустое.</p>
+    {% endif %}
+</div>
+
+<!-- Скрипт для авто-расчета 80 минут -->
+<script>
+    document.getElementById('start_time').addEventListener('change', function() {
+        if (!this.value) return;
+        let [hours, minutes] = this.value.split(':').map(Number);
+        let date = new Date();
+        date.setHours(hours, minutes + 80);
+        let newHours = String(date.getHours()).padStart(2, '0');
+        let newMinutes = String(date.getMinutes()).padStart(2, '0');
+        document.getElementById('end_time').value = `${newHours}:${newMinutes}`;
+    });
+</script>
+{% endblock %}

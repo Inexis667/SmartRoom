@@ -1,0 +1,204 @@
+\{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Управление аудиториями</h2>
+</div>
+
+<!-- Карточки этажей -->
+<div class="dashboard" style="margin-bottom: 20px;">
+    <a href="/rooms?floor=" class="card stat-card" style="text-decoration: none; color: inherit; {% if not current_floor %}border: 2px solid var(--primary);{% endif %}">
+        <div class="stat-icon" style="background: #e2e8f0; color: #475569;">
+            <i class="fa-solid fa-building"></i>
+        </div>
+        <div class="stat-info">
+            <h3>Все этажи</h3>
+            <p>{{ rooms|length }}</p>
+        </div>
+    </a>
+
+    {% for floor_num in [0, 1, 2, 3, 4] %}
+        {% set floor_rooms = [] %}
+        {% for room in rooms %}
+            {% if room.name[0] == floor_num|string %}
+                {% set _ = floor_rooms.append(room) %}
+            {% endif %}
+        {% endfor %}
+
+        {% if floor_rooms %}
+            <a href="/rooms?floor={{ floor_num }}" class="card stat-card" style="text-decoration: none; color: inherit; {% if current_floor == floor_num|string %}border: 2px solid var(--primary);{% endif %}">
+                <div class="stat-icon {% if floor_num == 0 %}bg-orange{% elif floor_num == 1 %}bg-blue{% elif floor_num == 2 %}bg-green{% elif floor_num == 3 %}bg-purple{% else %}bg-orange{% endif %}">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ floor_num }} этаж</h3>
+                    <p>{{ floor_rooms|length }}</p>
+                </div>
+            </a>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h3>Добавить аудиторию</h3>
+    <form action="/rooms/add" method="POST" class="inline-form">
+        <input type="text" name="name" placeholder="Номер (напр. 305)" required>
+        <input type="number" name="capacity" placeholder="Мест" min="1" required>
+        <label class="checkbox-label">
+            <input type="checkbox" name="has_board"> Есть доска
+        </label>
+        <label class="checkbox-label">
+            <input type="checkbox" name="has_projector"> Есть проектор
+        </label>
+        <button type="submit" class="btn-primary">Добавить</button>
+    </form>
+</div>
+
+<div class="card mt-20">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3>Список аудиторий {% if current_floor %}— {{ current_floor }} этаж{% endif %}</h3>
+        <form method="GET" action="/rooms" style="display: flex; gap: 10px;">
+            {% if current_floor %}<input type="hidden" name="floor" value="{{ current_floor }}">{% endif %}
+            <input type="text" name="search" value="{{ search }}" placeholder="Поиск по номеру..." style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+            <button type="submit" class="btn-primary">Найти</button>
+        </form>
+    </div>
+
+    <!-- Если выбрано "Все этажи" (нет фильтра), группируем по этажам -->
+    {% if not current_floor %}
+        {% for floor_num in [0, 1, 2, 3, 4] %}
+            {% set floor_rooms = [] %}
+            {% for room in rooms %}
+                {% if room.name[0] == floor_num|string %}
+                    {% set _ = floor_rooms.append(room) %}
+                {% endif %}
+            {% endfor %}
+
+            {% if floor_rooms %}
+                <div style="margin-top: 20px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                    <div onclick="toggleFloor({{ floor_num }})" style="background: #f8fafc; padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: var(--primary);">
+                        <span>{{ floor_num }} этаж ({{ floor_rooms|length }} ауд.)</span>
+                        <i id="icon-{{ floor_num }}" class="fa-solid fa-chevron-down"></i>
+                    </div>
+                    <div id="floor-{{ floor_num }}" style="display: block; padding: 0 16px 16px;">
+                        <table class="data-table" style="margin-top: 0;">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Название</th>
+                                    <th>Вместимость</th>
+                                    <th>Доска</th>
+                                    <th>Проектор</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for room in floor_rooms %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td><strong>{{ room.name }}</strong></td>
+                                    <td>{{ room.capacity }}</td>
+                                    <td>
+                                        {% if room.has_board %}
+                                            <span class="text-green"><i class="fa-solid fa-check"></i> Да</span>
+                                        {% else %}
+                                            <span class="text-red"><i class="fa-solid fa-xmark"></i> Нет</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if room.has_projector %}
+                                            <span class="text-green"><i class="fa-solid fa-check"></i> Да</span>
+                                        {% else %}
+                                            <span class="text-red"><i class="fa-solid fa-xmark"></i> Нет</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="display: flex; gap: 5px;">
+                                        <a href="/rooms/{{ room.id }}/view" class="btn-icon text-blue" title="Схема аудитории">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                        <a href="/rooms/edit/{{ room.id }}" class="btn-icon text-blue" title="Редактировать">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </a>
+                                        <form action="/rooms/delete/{{ room.id }}" method="POST" class="inline-action">
+                                            <button type="submit" class="btn-icon text-red" title="Удалить"><i class="fa-solid fa-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <!-- Если выбран конкретный этаж, показываем просто список -->
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Название</th>
+                    <th>Вместимость</th>
+                    <th>Доска</th>
+                    <th>Проектор</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for room in rooms %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><strong>{{ room.name }}</strong></td>
+                    <td>{{ room.capacity }}</td>
+                    <td>
+                        {% if room.has_board %}
+                            <span class="text-green"><i class="fa-solid fa-check"></i> Да</span>
+                        {% else %}
+                            <span class="text-red"><i class="fa-solid fa-xmark"></i> Нет</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if room.has_projector %}
+                            <span class="text-green"><i class="fa-solid fa-check"></i> Да</span>
+                        {% else %}
+                            <span class="text-red"><i class="fa-solid fa-xmark"></i> Нет</span>
+                        {% endif %}
+                    </td>
+                    <td style="display: flex; gap: 5px;">
+                        <a href="/rooms/{{ room.id }}/view" class="btn-icon text-blue" title="Схема аудитории">
+                            <i class="fa-solid fa-eye"></i>
+                        </a>
+                        <a href="/rooms/edit/{{ room.id }}" class="btn-icon text-blue" title="Редактировать">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                        <form action="/rooms/delete/{{ room.id }}" method="POST" class="inline-action">
+                            <button type="submit" class="btn-icon text-red" title="Удалить"><i class="fa-solid fa-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">Аудиторий нет.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+
+<script>
+    function toggleFloor(floor) {
+        const content = document.getElementById(`floor-${floor}`);
+        const icon = document.getElementById(`icon-${floor}`);
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.classList.remove('fa-chevron-right');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            content.style.display = 'none';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-right');
+        }
+    }
+</script>
+{% endblock %}

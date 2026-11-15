@@ -1,0 +1,636 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "three/examples/": "https://unpkg.com/three@0.160.0/examples/"
+  }
+}
+</script>
+
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="margin: 0; color: #1e293b;">3D-Конструктор: {{ room.name }}</h2>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div id="toolbar" style="display: none; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <span style="font-weight: 600; color: #64748b; font-size: 14px; margin-right: 5px;">Инструменты:</span>
+
+            <button onclick="selectTool('desk_1')" id="btn-desk_1" class="tool-btn">Парта (1)</button>
+            <button onclick="selectTool('desk')" id="btn-desk" class="tool-btn">Парта (2)</button>
+            <button onclick="selectTool('desk_3')" id="btn-desk_3" class="tool-btn">Парта (3)</button>
+            <button onclick="selectTool('desk_3_pc_left')" id="btn-desk_3_pc_left" class="tool-btn">Парта 3 + ПК (L)</button>
+            <button onclick="selectTool('desk_3_pc_right')" id="btn-desk_3_pc_right" class="tool-btn">Парта 3 + ПК (R)</button>
+
+            <button onclick="selectTool('chair')" id="btn-chair" class="tool-btn">Стул</button>
+            <button onclick="selectTool('armchair')" id="btn-armchair" class="tool-btn">Кресло</button>
+
+            <span style="border-left: 1px solid #cbd5e1; height: 24px; margin: 0 4px;"></span>
+
+            <button onclick="selectTool('board')" id="btn-board" class="tool-btn">Доска</button>
+            <button onclick="selectTool('projector')" id="btn-projector" class="tool-btn">Проектор</button>
+            <button onclick="selectTool('ac')" id="btn-ac" class="tool-btn">Кондер</button>
+            <button onclick="selectTool('socket')" id="btn-socket" class="tool-btn">Розетка</button>
+            <button onclick="selectTool('window')" id="btn-window" class="tool-btn">Окно</button>
+            <button onclick="selectTool('door')" id="btn-door" class="tool-btn">Дверь</button>
+
+            <span style="border-left: 1px solid #cbd5e1; height: 24px; margin: 0 4px;"></span>
+
+            <button onclick="selectTool(null)" id="btn-none" class="tool-btn" style="background: #e2e8f0; color: #475569;">Отмена (Крутить)</button>
+            <button onclick="rotateSelected(-1)" class="btn-primary" style="background: #f59e0b; padding: 8px 12px;">↺</button>
+            <button onclick="rotateSelected(1)" class="btn-primary" style="background: #f59e0b; padding: 8px 12px;">↻</button>
+            <button onclick="deleteSelected()" class="btn-primary" style="background: #ef4444; padding: 8px 12px;">Удалить</button>
+            <button onclick="saveLayout()" class="btn-primary" style="background: #10b981; padding: 8px 12px;">Сохранить</button>
+        </div>
+        <button onclick="toggleEdit()" id="editBtn" class="btn-primary" style="background: #0f172a;">Режим редактирования</button>
+        <a href="/rooms" style="text-decoration: none; background: white; color: #0f172a; padding: 10px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); font-weight: 600; border: 1px solid #e2e8f0;">← Назад</a>
+    </div>
+</div>
+
+<style>
+    .tool-btn {
+        background: white; border: 1px solid #cbd5e1; color: #475569;
+        padding: 8px 12px; border-radius: 8px; font-weight: 600;
+        cursor: pointer; transition: 0.2s;
+    }
+    .tool-btn:hover { background: #f1f5f9; }
+    .tool-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
+</style>
+
+<div id="3d-container" style="width: 100%; height: 700px; background: #f8fafc; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative;">
+    <div id="status" style="position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 12px; font-weight: 600; color: #475569; z-index: 10; display: none;">
+        <i class="fa-solid fa-pen"></i> Выбери инструмент. Крути ЛКМ, двигай ПКМ.
+    </div>
+</div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const initialData = {{ seats | tojson }};
+
+    const container = document.getElementById('3d-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf8fafc);
+
+    const ROOM_WIDTH = 16;
+    const ROOM_LENGTH = 35;
+    const WALL_HEIGHT = 5;
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 15, 25);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    container.appendChild(renderer.domElement);
+
+    const environment = new RoomEnvironment();
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmremGenerator.fromScene(environment).texture;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(10, 20, 15);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    controls.enablePan = true;
+    controls.screenSpacePanning = true;
+    controls.panSpeed = 1.5;
+
+    // --- МАТЕРИАЛЫ ---
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.4, metalness: 0.1 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.2, metalness: 0.9 });
+    const blackPlasticMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+    const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.8 });
+    const blackSocketMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6 });
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.6 });
+    const screenMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.1, metalness: 0.3 });
+    const darkScreenMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2, metalness: 0.5 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x87ceeb, metalness: 0.1, roughness: 0.1, transmission: 0.9, thickness: 0.5, ior: 1.5, clearcoat: 1.0, clearcoatRoughness: 0.1 });
+    const doorWoodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.5 });
+    const fabricMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.8 });
+    const pcMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.3, metalness: 0.8 });
+
+    // --- ПОЛ И СТЕНЫ ---
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#c19a6b'; ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 512; i += 128) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.05})`;
+        ctx.fillRect(0, i, 512, 128);
+        ctx.strokeStyle = '#a67c52'; ctx.lineWidth = 2;
+        ctx.strokeRect(0, i, 512, 128);
+    }
+    const floorTexture = new THREE.CanvasTexture(canvas);
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(5, 10);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_WIDTH, ROOM_LENGTH), new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 0.6 }));
+    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_WIDTH, WALL_HEIGHT, 0.2), wallMat);
+    backWall.position.set(0, WALL_HEIGHT/2, -ROOM_LENGTH/2); backWall.receiveShadow = true; scene.add(backWall);
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, WALL_HEIGHT, ROOM_LENGTH), wallMat);
+    leftWall.position.set(-ROOM_WIDTH/2, WALL_HEIGHT/2, 0); leftWall.receiveShadow = true; scene.add(leftWall);
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, WALL_HEIGHT, ROOM_LENGTH), wallMat);
+    rightWall.position.set(ROOM_WIDTH/2, WALL_HEIGHT/2, 0); rightWall.receiveShadow = true; scene.add(rightWall);
+
+    // --- ФУНКЦИИ СОЗДАНИЯ ---
+    function createDesk(x, y, z, type = 'desk') {
+        const g = new THREE.Group();
+
+        let width = 2.0;
+        if (type === 'desk') width = 3.0;
+        if (type === 'double_desk') width = 4.5;
+        if (type === 'desk_3' || type === 'desk_3_pc_left' || type === 'desk_3_pc_right') width = 4.5;
+
+        let pcSide = null;
+        if (type === 'desk_3_pc_left') pcSide = 'left';
+        if (type === 'desk_3_pc_right') pcSide = 'right';
+
+        const top = new THREE.Mesh(new THREE.BoxGeometry(width, 0.15, 1.6), woodMat);
+        top.position.y = 0.8; top.castShadow = true; top.receiveShadow = true; g.add(top);
+
+        const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 16);
+        const positions = [];
+
+        positions.push([-width/2 + 0.2, 0.4, -0.7], [width/2 - 0.2, 0.4, -0.7], [-width/2 + 0.2, 0.4, 0.7], [width/2 - 0.2, 0.4, 0.7]);
+        if (width > 3.0) {
+            positions.push([0, 0.4, -0.7], [0, 0.4, 0.7]);
+        }
+
+        positions.forEach(p => {
+            const l = new THREE.Mesh(legGeo, metalMat); l.position.set(...p); l.castShadow = true; g.add(l);
+        });
+
+        // ДОБАВЛЯЕМ РОЗЕТКУ ПО ЦЕНТРУ ПАРТЫ (если это ПК-парта)
+        if (pcSide) {
+            // Сама розетка (маленький черный/серый блок сверху стола)
+            const socketBlock = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.2), blackSocketMat);
+            socketBlock.position.set(0, 0.9, 0.5); // По центру стола, ближе к краю
+            socketBlock.castShadow = true;
+            g.add(socketBlock);
+
+            // Дырочки для вилки
+            const hole1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.02), metalMat);
+            hole1.position.set(-0.08, 0.92, 0.5);
+            hole1.rotation.x = Math.PI / 2;
+            g.add(hole1);
+
+            const hole2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.02), metalMat);
+            hole2.position.set(0.08, 0.92, 0.5);
+            hole2.rotation.x = Math.PI / 2;
+            g.add(hole2);
+
+            // Монитор и системный блок (как было)
+            const pcX = pcSide === 'left' ? -width/2 + 0.7 : width/2 - 0.7;
+
+            const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), pcMat);
+            monitor.position.set(pcX, 1.3, -0.3); monitor.castShadow = true; g.add(monitor);
+
+            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3), metalMat);
+            stand.position.set(pcX, 0.95, -0.3); g.add(stand);
+
+            const systemUnit = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.6, 0.6), pcMat);
+            systemUnit.position.set(pcSide === 'left' ? -width/2 + 0.2 : width/2 - 0.2, 0.3, 0); systemUnit.castShadow = true; g.add(systemUnit);
+        }
+
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    function createChair(x, y, z) {
+        const g = new THREE.Group();
+        const s = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.15, 1.0), blackPlasticMat);
+        s.position.y = 0.5; s.castShadow = true; g.add(s);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.1), blackPlasticMat);
+        b.position.set(0, 0.85, 0.45); b.castShadow = true; g.add(b);
+        const legGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8);
+        [[-0.4, 0.25, -0.4], [0.4, 0.25, -0.4], [-0.4, 0.25, 0.4], [0.4, 0.25, 0.4]].forEach(p => {
+            const l = new THREE.Mesh(legGeo, metalMat); l.position.set(...p); l.castShadow = true; g.add(l);
+        });
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    function createArmchair(x, y, z) {
+        const g = new THREE.Group();
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 1.2), fabricMat);
+        seat.position.y = 0.5; seat.castShadow = true; g.add(seat);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 0.2), fabricMat);
+        back.position.set(0, 1.0, 0.5); back.castShadow = true; g.add(back);
+        const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 1.0), blackPlasticMat);
+        arm1.position.set(-0.6, 0.7, 0); arm1.castShadow = true; g.add(arm1);
+        const arm2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 1.0), blackPlasticMat);
+        arm2.position.set(0.6, 0.7, 0); arm2.castShadow = true; g.add(arm2);
+        const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4), metalMat);
+        cylinder.position.y = 0.3; g.add(cylinder);
+        const wheelGeo = new THREE.SphereGeometry(0.06, 8, 8);
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const wheel = new THREE.Mesh(wheelGeo, blackPlasticMat);
+            wheel.position.set(Math.cos(angle) * 0.4, 0.06, Math.sin(angle) * 0.4);
+            wheel.castShadow = true; g.add(wheel);
+            const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.03, 0.03), metalMat);
+            spoke.rotation.y = angle;
+            spoke.position.set(Math.cos(angle) * 0.2, 0.06, Math.sin(angle) * 0.2);
+            g.add(spoke);
+        }
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    function createBoard(x, y, z) {
+        const g = new THREE.Group();
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(6.2, 3.2, 0.15), metalMat);
+        frame.castShadow = true; g.add(frame);
+        const screen = new THREE.Mesh(new THREE.BoxGeometry(6.0, 3.0, 0.18), screenMat);
+        screen.castShadow = true; g.add(screen);
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    function createProjector(x, y, z) {
+        const g = new THREE.Group();
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(6.2, 3.2, 0.15), metalMat);
+        frame.castShadow = true; g.add(frame);
+        const screen = new THREE.Mesh(new THREE.BoxGeometry(6.0, 3.0, 0.18), darkScreenMat);
+        screen.castShadow = true; g.add(screen);
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    function createSocket(x, y, z) {
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.05), blackSocketMat);
+        plate.position.set(x, y, z);
+        return plate;
+    }
+
+    function createAC(x, y, z) {
+        const g = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.7, 0.6), creamMat);
+        body.castShadow = true; g.add(body);
+        const grill = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.2, 0.1), blackPlasticMat);
+        grill.position.set(0, 0.1, 0.3); g.add(grill);
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    function createWindow(x, y, z) {
+        const g = new THREE.Group();
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.2, 0.2), frameMat);
+        frame.castShadow = true; g.add(frame);
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(3.8, 2.8, 0.05), glassMat);
+        glass.position.z = 0.12; g.add(glass);
+        const cross1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.8, 0.15), frameMat);
+        cross1.position.z = 0.12;
+        const cross2 = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.1, 0.15), frameMat);
+        cross2.position.z = 0.12;
+        g.add(cross1, cross2);
+        const sill = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.15, 0.4), frameMat);
+        sill.position.set(0, -1.6, 0.2); g.add(sill);
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    function createDoor(x, y, z) {
+        const g = new THREE.Group();
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 4.4, 0.2), frameMat);
+        frame.castShadow = true; g.add(frame);
+        const door = new THREE.Mesh(new THREE.BoxGeometry(2.0, 4.0, 0.1), doorWoodMat);
+        door.position.z = 0.15; g.add(door);
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3), metalMat);
+        handle.rotation.z = Math.PI / 2;
+        handle.position.set(0.8, 0, 0.25); g.add(handle);
+        g.position.set(x, y, z);
+        return g;
+    }
+
+    // --- ЗАГРУЗКА ---
+    let objects = [];
+    initialData.forEach(item => {
+        const x = (item.pos_x / 100) * ROOM_WIDTH - ROOM_WIDTH/2;
+        const z = (item.pos_y / 100) * ROOM_LENGTH - ROOM_LENGTH/2;
+        let obj;
+
+        let y = 0;
+        if (item.type === 'board' || item.type === 'projector') y = item.pos_z || 3.5;
+        if (item.type === 'socket') y = item.pos_z || 1.5;
+        if (item.type === 'ac') y = item.pos_z || 4.0;
+        if (item.type === 'window') y = item.pos_z || 3.0;
+        if (item.type === 'door') y = item.pos_z || 2.0;
+
+        if (['seat', 'desk', 'double_desk', 'desk_1', 'desk_3', 'desk_3_pc_left', 'desk_3_pc_right'].includes(item.type)) {
+            obj = createDesk(x, 0, z, item.type);
+        }
+        else if (item.type === 'chair') obj = createChair(x, 0, z);
+        else if (item.type === 'armchair') obj = createArmchair(x, 0, z);
+        else if (item.type === 'board') obj = createBoard(x, y, z);
+        else if (item.type === 'projector') obj = createProjector(x, y, z);
+        else if (item.type === 'socket') obj = createSocket(x, y, z);
+        else if (item.type === 'ac') obj = createAC(x, y, z);
+        else if (item.type === 'window') obj = createWindow(x, y, z);
+        else if (item.type === 'door') obj = createDoor(x, y, z);
+
+        if (obj) {
+            obj.userData = { type: item.type, number: item.seat_number };
+            obj.rotation.y = item.rotation || 0;
+            scene.add(obj);
+            objects.push(obj);
+        }
+    });
+
+    // --- ЛОГИКА ---
+    let isEditMode = false;
+    let currentTool = null;
+    let selectedObject = null;
+    let isDragging = false;
+    let dragStartPoint = new THREE.Vector3();
+    let dragStartObjectPos = new THREE.Vector3();
+
+    window.toggleEdit = () => {
+        isEditMode = !isEditMode;
+        document.getElementById('toolbar').style.display = isEditMode ? 'flex' : 'none';
+        document.getElementById('status').style.display = isEditMode ? 'block' : 'none';
+        document.getElementById('editBtn').innerText = isEditMode ? 'Выйти' : 'Редактировать';
+        if (isEditMode) selectTool(null);
+    };
+
+    window.selectTool = (tool) => {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        if (tool) {
+            const btn = document.getElementById(`btn-${tool}`);
+            if (btn) btn.classList.add('active');
+        } else {
+            document.getElementById('btn-none').classList.add('active');
+        }
+    };
+
+    window.rotateSelected = (dir) => {
+        if (selectedObject) {
+            selectedObject.rotation.y += dir * (Math.PI / 4);
+        }
+    };
+
+    window.deleteSelected = () => {
+        if (selectedObject) {
+            scene.remove(selectedObject);
+            objects = objects.filter(o => o !== selectedObject);
+            selectedObject = null;
+        }
+    };
+
+    window.saveLayout = () => {
+        const data = objects.map((obj, index) => {
+            const x = ((obj.position.x + ROOM_WIDTH/2) / ROOM_WIDTH) * 100;
+            const y = ((obj.position.z + ROOM_LENGTH/2) / ROOM_LENGTH) * 100;
+            const z = obj.position.y;
+
+            return {
+                type: obj.userData.type,
+                number: index + 1,
+                x: x,
+                y: y,
+                z: z,
+                rotation: obj.rotation.y
+            };
+        });
+
+        fetch(`/rooms/{{ room.id }}/seats/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(res => res.json()).then(() => alert('Сохранено!'));
+    };
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const clickable = [floor, backWall, leftWall, rightWall];
+
+    // --- МЫШЬ ---
+    renderer.domElement.addEventListener('mousedown', (event) => {
+        if (!isEditMode) return;
+        if (event.button !== 0) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        const intersectsObjects = raycaster.intersectObjects(objects, true);
+        if (intersectsObjects.length > 0) {
+            let parent = intersectsObjects[0].object;
+            while (parent.parent && !objects.includes(parent)) parent = parent.parent;
+
+            if (objects.includes(parent)) {
+                selectedObject = parent;
+                isDragging = true;
+                controls.enabled = false;
+
+                const isWallObject = ['socket', 'window', 'door', 'board', 'projector', 'ac'].includes(parent.userData.type);
+
+                if (isWallObject) {
+                    const wallIntersect = raycaster.intersectObjects([backWall, leftWall, rightWall]);
+                    if (wallIntersect.length > 0) {
+                        dragStartPoint.copy(wallIntersect[0].point);
+                        dragStartObjectPos.copy(selectedObject.position);
+                    }
+                } else {
+                    const floorIntersect = raycaster.intersectObject(floor);
+                    if (floorIntersect.length > 0) {
+                        dragStartPoint.copy(floorIntersect[0].point);
+                        dragStartObjectPos.copy(selectedObject.position);
+                    }
+                }
+            }
+        } else {
+            selectedObject = null;
+        }
+    });
+
+    renderer.domElement.addEventListener('mousemove', (event) => {
+        if (!isDragging || !selectedObject) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        const isWallObject = ['socket', 'window', 'door', 'board', 'projector', 'ac'].includes(selectedObject.userData.type);
+
+        if (isWallObject) {
+            const wallIntersect = raycaster.intersectObjects([backWall, leftWall, rightWall]);
+            if (wallIntersect.length > 0) {
+                const currentPoint = wallIntersect[0].point;
+                const deltaX = currentPoint.x - dragStartPoint.x;
+                const deltaY = currentPoint.y - dragStartPoint.y;
+                const deltaZ = currentPoint.z - dragStartPoint.z;
+
+                if (Math.abs(selectedObject.position.z + ROOM_LENGTH/2) < 1) {
+                    let newX = Math.round(dragStartObjectPos.x + deltaX);
+                    let newY = Math.max(1.0, Math.min(WALL_HEIGHT - 1, dragStartObjectPos.y + deltaY));
+                    newX = Math.max(-ROOM_WIDTH/2 + 1, Math.min(ROOM_WIDTH/2 - 1, newX));
+                    selectedObject.position.x = newX;
+                    selectedObject.position.y = newY;
+                } else if (Math.abs(selectedObject.position.x + ROOM_WIDTH/2) < 1) {
+                    let newZ = Math.round(dragStartObjectPos.z + deltaZ);
+                    let newY = Math.max(1.0, Math.min(WALL_HEIGHT - 1, dragStartObjectPos.y + deltaY));
+                    newZ = Math.max(-ROOM_LENGTH/2 + 1, Math.min(ROOM_LENGTH/2 - 1, newZ));
+                    selectedObject.position.z = newZ;
+                    selectedObject.position.y = newY;
+                } else if (Math.abs(selectedObject.position.x - ROOM_WIDTH/2) < 1) {
+                    let newZ = Math.round(dragStartObjectPos.z + deltaZ);
+                    let newY = Math.max(1.0, Math.min(WALL_HEIGHT - 1, dragStartObjectPos.y + deltaY));
+                    newZ = Math.max(-ROOM_LENGTH/2 + 1, Math.min(ROOM_LENGTH/2 - 1, newZ));
+                    selectedObject.position.z = newZ;
+                    selectedObject.position.y = newY;
+                }
+            }
+        } else {
+            const floorIntersect = raycaster.intersectObject(floor);
+            if (floorIntersect.length > 0) {
+                const currentPoint = floorIntersect[0].point;
+                const deltaX = currentPoint.x - dragStartPoint.x;
+                const deltaZ = currentPoint.z - dragStartPoint.z;
+
+                let newX = Math.round(dragStartObjectPos.x + deltaX);
+                let newZ = Math.round(dragStartObjectPos.z + deltaZ);
+
+                newX = Math.max(-ROOM_WIDTH/2 + 1, Math.min(ROOM_WIDTH/2 - 1, newX));
+                newZ = Math.max(-ROOM_LENGTH/2 + 1, Math.min(ROOM_LENGTH/2 - 1, newZ));
+
+                const collision = objects.some(o => o !== selectedObject && Math.abs(o.position.x - newX) < 1.0 && Math.abs(o.position.z - newZ) < 1.0);
+
+                if (!collision) {
+                    selectedObject.position.x = newX;
+                    selectedObject.position.z = newZ;
+                }
+            }
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            controls.enabled = true;
+        }
+    });
+
+    renderer.domElement.addEventListener('click', (event) => {
+        if (!isEditMode || isDragging) return;
+        if (!currentTool) return;
+        if (event.button !== 0) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        if (raycaster.intersectObjects(objects, true).length > 0) return;
+
+        const intersectsEnvironment = raycaster.intersectObjects(clickable);
+        if (intersectsEnvironment.length > 0) {
+            const point = intersectsEnvironment[0].point;
+            const clickedObj = intersectsEnvironment[0].object;
+
+            let x = Math.round(point.x);
+            let z = Math.round(point.z);
+            let y = 0;
+
+            const isWall = (clickedObj === backWall || clickedObj === leftWall || clickedObj === rightWall);
+
+            if (!isWall && ['board', 'socket', 'ac', 'window', 'door', 'projector'].includes(currentTool)) {
+                alert('Этот объект ставится только на стену!');
+                return;
+            }
+            if (isWall && ['desk_1', 'desk', 'desk_3', 'desk_3_pc_left', 'desk_3_pc_right', 'chair', 'armchair'].includes(currentTool)) {
+                alert('Парты и стулья ставятся только на пол!');
+                return;
+            }
+
+            if (isWall) {
+                y = Math.max(1.0, Math.min(WALL_HEIGHT - 1, point.y));
+                if (clickedObj === backWall) { z = -ROOM_LENGTH/2 + 0.2; }
+                if (clickedObj === leftWall) { x = -ROOM_WIDTH/2 + 0.2; }
+                if (clickedObj === rightWall) { x = ROOM_WIDTH/2 - 0.2; }
+            } else {
+                if (currentTool !== 'socket') {
+                    const collision = objects.some(o => Math.abs(o.position.x - x) < 1.5 && Math.abs(o.position.z - z) < 1.5);
+                    if (collision) return;
+                }
+            }
+
+            let obj;
+            if (currentTool === 'desk_1') obj = createDesk(x, 0, z, 'desk_1');
+            if (currentTool === 'desk') obj = createDesk(x, 0, z, 'desk');
+            if (currentTool === 'desk_3') obj = createDesk(x, 0, z, 'desk_3');
+            if (currentTool === 'desk_3_pc_left') obj = createDesk(x, 0, z, 'desk_3_pc_left');
+            if (currentTool === 'desk_3_pc_right') obj = createDesk(x, 0, z, 'desk_3_pc_right');
+            if (currentTool === 'chair') obj = createChair(x, 0, z);
+            if (currentTool === 'armchair') obj = createArmchair(x, 0, z);
+            if (currentTool === 'board') obj = createBoard(x, y, z);
+            if (currentTool === 'projector') obj = createProjector(x, y, z);
+            if (currentTool === 'socket') obj = createSocket(x, y, z);
+            if (currentTool === 'ac') obj = createAC(x, y, z);
+            if (currentTool === 'window') obj = createWindow(x, y, z);
+            if (currentTool === 'door') obj = createDoor(x, y, z);
+
+            if (obj) {
+                obj.userData = { type: currentTool, number: objects.length + 1 };
+                scene.add(obj);
+                objects.push(obj);
+            }
+        }
+    });
+
+    window.addEventListener('wheel', (event) => {
+        if (!isEditMode || !selectedObject) return;
+        event.preventDefault();
+        selectedObject.rotation.y += event.deltaY > 0 ? Math.PI / 4 : -Math.PI / 4;
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (!isEditMode || !selectedObject) return;
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+            window.deleteSelected();
+        }
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card" style="text-align: center; padding: 60px 20px;">
+    <div style="font-size: 60px; color: #ef4444; margin-bottom: 20px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <h2 style="color: #1e293b; margin-bottom: 15px;">Ошибка</h2>
+    <p style="color: #64748b; font-size: 18px; max-width: 500px; margin: 0 auto 30px;">
+        {{ message }}
+    </p>
+    <a href="javascript:history.back()" class="btn-primary" style="display: inline-block; text-decoration: none;">
+        ← Вернуться назад
+    </a>
+</div>
+{% endblock %}

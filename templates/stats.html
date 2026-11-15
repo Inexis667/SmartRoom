@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Статистика загруженности</h2>
+</div>
+
+<div class="card">
+    <h3>Количество занятий в аудиториях</h3>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+        Диаграмма показывает, сколько всего занятий проведено (или запланировано) в каждом кабинете.
+    </p>
+
+    <!-- Контейнер для графика -->
+    <div style="position: relative; height: 400px; width: 100%;">
+        <canvas id="roomsChart"></canvas>
+    </div>
+</div>
+
+<!-- Подключаем Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Получаем данные из Python (Jinja2 преобразует их в JSON)
+    const roomNames = {{ room_names | tojson }};
+    const lessonCounts = {{ lesson_counts | tojson }};
+
+    const ctx = document.getElementById('roomsChart').getContext('2d');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: roomNames,
+            datasets: [{
+                label: 'Количество занятий',
+                data: lessonCounts,
+                backgroundColor: '#3b82f6', // Синий цвет
+                borderRadius: 6,
+                barThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false } // Скрываем легенду, она тут не нужна
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 } // Только целые числа
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

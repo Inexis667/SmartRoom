@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Поиск свободных аудиторий</h2>
+</div>
+
+<div class="card">
+    <h3>Параметры поиска</h3>
+    <form action="/free-rooms/search" method="POST" class="grid-form">
+        <div class="form-group">
+            <label>Дата</label>
+            <input type="date" name="lesson_date" value="{{ lesson_date or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label>Начало</label>
+            <input type="time" name="start_time" value="{{ start_time or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label>Окончание</label>
+            <input type="time" name="end_time" value="{{ end_time or '' }}" required>
+        </div>
+        <div class="form-group">
+            <label>Студентов (мин.)</label>
+            <input type="number" name="students_count" min="0" value="{{ students_count or 0 }}">
+        </div>
+        <div class="form-group" style="justify-content: flex-end;">
+            <label class="checkbox-label" style="margin-bottom: 12px;">
+                <input type="checkbox" name="requires_computers" {% if requires_computers %}checked{% endif %}> Нужны ПК
+            </label>
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn-primary" style="width: 100%;">Найти</button>
+        </div>
+    </form>
+</div>
+
+{% if free_rooms is not none %}
+<div class="card mt-20">
+    <h3>Найдено аудиторий: {{ free_rooms|length }}</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>№</th>
+                <th>Название</th>
+                <th>Вместимость</th>
+                <th>Тип</th>
+                <th>Компьютеры</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for room in free_rooms %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ room.name }}</strong></td>
+                <td>{{ room.capacity }} мест</td>
+                <td><span class="badge">{{ room.room_type }}</span></td>
+                <td>
+                    {% if room.has_computers %}
+                        <span class="text-green"><i class="fa-solid fa-check"></i> Да</span>
+                    {% else %}
+                        <span class="text-red"><i class="fa-solid fa-xmark"></i> Нет</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center">Свободных аудиторий не найдено.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

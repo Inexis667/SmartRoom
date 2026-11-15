@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Главная панель</h2>
+</div>
+
+<div class="dashboard">
+    <div class="card stat-card">
+        <div class="stat-icon bg-blue"><i class="fa-solid fa-door-open"></i></div>
+        <div class="stat-info">
+            <h3>Аудитории</h3>
+            <p>{{ rooms_count }}</p>
+            <a href="/rooms">Перейти →</a>
+        </div>
+    </div>
+
+    <div class="card stat-card">
+        <div class="stat-icon bg-green"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-info">
+            <h3>Группы</h3>
+            <p>{{ groups_count }}</p>
+            <a href="/groups">Перейти →</a>
+        </div>
+    </div>
+
+    <div class="card stat-card">
+        <div class="stat-icon bg-purple"><i class="fa-solid fa-user-tie"></i></div>
+        <div class="stat-info">
+            <h3>Преподаватели</h3>
+            <p>{{ teachers_count }}</p>
+            <a href="/teachers">Перейти →</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

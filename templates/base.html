@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartRoom</title>
+    <!-- Подключаем шрифт и иконки -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+    <!-- Боковое меню -->
+    <aside class="sidebar">
+        <div class="logo">
+            <i class="fa-solid fa-building-columns"></i> SmartRoom
+        </div>
+        <nav class="menu">
+            <a href="/" class="{{ 'active' if request.path == '/' else '' }}">
+                <i class="fa-solid fa-house"></i> Главная
+            </a>
+            <a href="/rooms" class="{{ 'active' if '/rooms' in request.path else '' }}">
+                <i class="fa-solid fa-door-open"></i> Аудитории
+            </a>
+            <a href="/groups" class="{{ 'active' if '/groups' in request.path else '' }}">
+                <i class="fa-solid fa-users"></i> Группы
+            </a>
+            <a href="/teachers" class="{{ 'active' if '/teachers' in request.path else '' }}">
+                <i class="fa-solid fa-user-tie"></i> Преподаватели
+            </a>
+            <a href="/subjects" class="{{ 'active' if '/subjects' in request.path else '' }}">
+                <i class="fa-solid fa-book"></i> Предметы
+            </a>
+            <a href="/schedule" class="{{ 'active' if '/schedule' in request.path else '' }}">
+                <i class="fa-solid fa-calendar-days"></i> Расписание
+            </a>
+            <a href="/free-rooms" class="{{ 'active' if '/free-rooms' in request.path else '' }}">
+                <i class="fa-solid fa-magnifying-glass"></i> Свободные аудитории
+            </a>
+            <a href="/stats" class="{{ 'active' if '/stats' in request.path else '' }}">
+                <i class="fa-solid fa-chart-simple"></i> Статистика
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Основная часть -->
+    <div class="main-content">
+        <!-- Верхняя панель -->
+        <header class="topbar">
+            <div class="search-bar">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" placeholder="Поиск...">
+            </div>
+            <div class="user-profile">
+                <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                <span>Администратор</span>
+            </div>
+        </header>
+
+        <!-- Здесь будет меняться контент страниц -->
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+</body>
+</html>

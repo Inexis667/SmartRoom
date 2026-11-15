@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Редактирование аудитории {{ room.name }}</h2>
+    <a href="/rooms" style="font-size: 14px;">← Назад к списку</a>
+</div>
+
+<div class="card">
+    <form action="/rooms/edit/{{ room.id }}" method="POST" class="inline-form">
+        <input type="text" name="name" value="{{ room.name }}" placeholder="Номер" required>
+        <input type="number" name="capacity" value="{{ room.capacity }}" placeholder="Мест" min="1" required>
+
+        <label class="checkbox-label">
+            <input type="checkbox" name="has_board" {% if room.has_board %}checked{% endif %}> Есть доска
+        </label>
+        <label class="checkbox-label">
+            <input type="checkbox" name="has_projector" {% if room.has_projector %}checked{% endif %}> Есть проектор
+        </label>
+
+        <button type="submit" class="btn-primary">Сохранить изменения</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+# База данных
+instance/
+*.db
+
+# Виртуальное окружение
+venv/
+.venv/
+
+# Кэш Python
+__pycache__/
+*.pyc
+
+# Файлы PyCharm
+.idea/

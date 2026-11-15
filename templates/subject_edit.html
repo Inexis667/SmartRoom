@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Редактирование предмета: {{ subject.name }}</h2>
+    <a href="/subjects" style="font-size: 14px;">← Назад к списку</a>
+</div>
+
+<div class="card">
+    <form action="/subjects/edit/{{ subject.id }}" method="POST" class="inline-form" style="flex-direction: column; align-items: stretch; gap: 15px;">
+
+        <label style="display: flex; flex-direction: column; gap: 5px;">
+            Название
+            <input type="text" name="name" value="{{ subject.name }}" required>
+        </label>
+
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <label class="checkbox-label">
+                <input type="checkbox" name="requires_board" {% if subject.requires_board %}checked{% endif %}> Нужна доска
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" name="requires_projector" {% if subject.requires_projector %}checked{% endif %}> Нужен проектор
+            </label>
+        </div>
+
+        <label style="display: flex; flex-direction: column; gap: 5px; max-width: 300px;">
+            Язык
+            <select name="language">
+                <option value="ru" {% if subject.language == 'ru' %}selected{% endif %}>Русский</option>
+                <option value="kz" {% if subject.language == 'kz' %}selected{% endif %}>Казахский</option>
+            </select>
+        </label>
+
+        <button type="submit" class="btn-primary" style="align-self: flex-start;">Сохранить изменения</button>
+    </form>
+</div>
+{% endblock %}
