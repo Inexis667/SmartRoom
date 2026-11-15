@@ -331,3 +331,110 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
 .seat.has-computer .socket-icon {
     color: #10b981;
 }
+
+/* =========================================
+   МОБИЛЬНАЯ ВЕРСИЯ (Адаптивность)
+   ========================================= */
+
+@media (max-width: 768px) {
+    /* 1. Меняем layout с горизонтального на вертикальный */
+    .layout {
+        flex-direction: column;
+    }
+
+    /* 2. Сайдбар превращаем в горизонтальное меню сверху */
+    .sidebar {
+        width: 100%;
+        padding: 10px 0;
+        flex-direction: row;
+        overflow-x: auto; /* Позволяет скроллить меню по горизонтали, если не влезает */
+        border-bottom: 1px solid #1e293b;
+    }
+
+    .logo {
+        padding: 0 15px 0 0;
+        margin-bottom: 0;
+        border-bottom: none;
+        border-right: 1px solid #1e293b;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    /* Скрываем текст в меню, оставляем только иконки */
+    .menu {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .menu a {
+        padding: 10px 15px;
+        font-size: 0; /* Скрываем текст */
+        flex-shrink: 0;
+    }
+
+    .menu a i {
+        font-size: 20px; /* Оставляем только иконки */
+        margin: 0;
+    }
+
+    /* 3. Основной контент занимает все оставшееся место */
+    .main-content {
+        width: 100%;
+        height: calc(100vh - 60px); /* Высота экрана минус высота верхнего меню */
+    }
+
+    /* 4. Верхняя панель (поиск и профиль) */
+    .topbar {
+        padding: 0 15px;
+        height: 60px;
+    }
+
+    .search-bar {
+        width: 100%;
+        max-width: 200px;
+    }
+
+    .user-profile span {
+        display: none; /* Скрываем текст "Администратор" */
+    }
+
+    /* 5. Карточки (дашборд) делаем в один столбец */
+    .dashboard, .grid-form {
+        grid-template-columns: 1fr;
+    }
+
+    /* 6. Таблицы делаем скроллируемыми */
+    .data-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    /* 7. Конструктор (3D) подстраиваем под ширину */
+    #3d-container {
+        height: 400px; /* Уменьшаем высоту на телефоне */
+    }
+
+    /* 8. Кнопки инструментов в 3D-конструкторе */
+    #toolbar {
+        flex-wrap: wrap;
+    }
+    #toolbar button {
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+
+    /* 9. Формы делаем вертикальными */
+    .inline-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .inline-form input, .inline-form select, .inline-form button {
+        width: 100%;
+    }
+
+    /* 10. Карточки этажей — в один столбец */
+    .dashboard .card {
+        width: 100%;
+    }
+}
