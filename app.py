@@ -557,6 +557,7 @@ def add_lesson():
         return "Время начала должно быть раньше времени окончания.", 400
 
     with get_connection() as db:
+        # Проверка конфликтов
         if has_conflict(db, lesson_date, start_time, end_time, "group_id", group_id):
             return "Конфликт: у этой группы уже есть занятие в это время.", 400
         if has_conflict(db, lesson_date, start_time, end_time, "teacher_id", teacher_id):
@@ -564,6 +565,7 @@ def add_lesson():
         if has_conflict(db, lesson_date, start_time, end_time, "room_id", room_id):
             return "Конфликт: эта аудитория уже занята в это время.", 400
 
+        # Проверка вместимости и оборудования
         room = db.execute("SELECT capacity, has_board, has_projector FROM rooms WHERE id = ?", (room_id,)).fetchone()
         group = db.execute("SELECT students_count FROM groups WHERE id = ?", (group_id,)).fetchone()
         subject = db.execute("SELECT requires_board, requires_projector FROM subjects WHERE id = ?", (subject_id,)).fetchone()
@@ -576,6 +578,14 @@ def add_lesson():
 
         if subject["requires_projector"] and not room["has_projector"]:
             return "Ошибка: для этого предмета требуется проектор, а в аудитории его нет.", 400
+
+        # СОХРАНЕНИЕ ЗАНЯТИЯ (вот этого не хватало)
+        db.execute("""
+            INSERT INTO lessons (group_id, teacher_id, subject_id, room_id, lesson_date, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (group_id, teacher_id, subject_id, room_id, lesson_date, start_time, end_time))
+
+    return redirect(url_for("schedule"))
 
 
 @app.route("/schedule/delete/<int:lesson_id>", methods=["POST"])
