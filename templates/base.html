@@ -42,6 +42,15 @@
             <a href="/stats" class="{{ 'active' if '/stats' in request.path else '' }}">
                 <i class="fa-solid fa-chart-simple"></i> Статистика
             </a>
+            {% if is_readonly %}
+            <a href="/login" style="background: #1e293b; color: #94a3b8; margin-top: auto;">
+                <i class="fa-solid fa-right-to-bracket"></i> Войти как админ
+            </a>
+            {% else %}
+            <a href="/logout" style="background: #7f1d1d; color: #fca5a5; margin-top: auto;">
+                <i class="fa-solid fa-right-from-bracket"></i> Выйти
+            </a>
+            {% endif %}
         </nav>
     </aside>
 

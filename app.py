@@ -1,13 +1,61 @@
 import sqlite3
 import re
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, abort, session
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from database import init_db, get_connection
 
 app = Flask(__name__)
+app.secret_key = 'super_secret_key_12345'  # Обязательно для сессий (можно любую строку)
 init_db()
 
+# --- ПАРОЛЬ АДМИНИСТРАТОРА ---
+# Логин: admin
+# Пароль: admin123 (в реальной жизни это не пишут в коде, но для защиты проекта пойдет)
+ADMIN_LOGIN = "admin"
+ADMIN_PASSWORD_HASH = generate_password_hash("admin123")
+
+
+# Проверка: если в сессии нет ключа admin, значит пользователь — гость
+@app.context_processor
+def inject_readonly():
+    is_admin = session.get('is_admin', False)
+    return dict(is_readonly=not is_admin)
+
+
+# Блокировка POST-запросов, если пользователь не авторизован
+@app.before_request
+def restrict_access():
+    # Пропускаем страницы входа/выхода и статические файлы
+    if request.path.startswith('/static/') or request.path in ['/login', '/logout']:
+        return
+
+    # Если это не админ и запрос на изменение (POST) — запрещаем
+    if not session.get('is_admin') and request.method == "POST":
+        abort(403, description="Вы не авторизованы. Войдите как администратор.")
+
+
+# --- АВТОРИЗАЦИЯ ---
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+
+        if username == ADMIN_LOGIN and check_password_hash(ADMIN_PASSWORD_HASH, password):
+            session['is_admin'] = True
+            return redirect(url_for("index"))
+        else:
+            return "Неверный логин или пароль", 403
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop('is_admin', None)
+    return redirect(url_for("index"))
 
 @app.template_filter('to_date_weekday')
 def to_date_weekday(date_str):

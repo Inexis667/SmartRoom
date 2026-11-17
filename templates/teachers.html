@@ -5,6 +5,7 @@
     <h2>Преподаватели</h2>
 </div>
 
+{% if not is_readonly %}
 <div class="card">
     <h3>Добавить преподавателя</h3>
     <form action="/teachers/add" method="POST" class="inline-form">
@@ -12,6 +13,7 @@
         <button type="submit" class="btn-primary">Добавить</button>
     </form>
 </div>
+{% endif %}
 
 <div class="card mt-20">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -27,7 +29,7 @@
             <tr>
                 <th>№</th>
                 <th>ФИО</th>
-                <th>Действия</th>
+                {% if not is_readonly %}<th>Действия</th>{% endif %}
             </tr>
         </thead>
         <tbody>
@@ -35,15 +37,17 @@
             <tr>
                 <td>{{ loop.index }}</td>
                 <td><strong>{{ teacher.full_name }}</strong></td>
+                {% if not is_readonly %}
                 <td>
                     <form action="/teachers/delete/{{ teacher.id }}" method="POST" class="inline-action">
                         <button type="submit" class="btn-icon text-red" title="Удалить"><i class="fa-solid fa-trash"></i></button>
                     </form>
                 </td>
+                {% endif %}
             </tr>
             {% else %}
             <tr>
-                <td colspan="3" class="text-center">Преподавателей не найдено.</td>
+                <td colspan="3" class="text-center">Преподавателей нет.</td>
             </tr>
             {% endfor %}
         </tbody>

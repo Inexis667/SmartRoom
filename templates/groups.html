@@ -26,6 +26,7 @@
     {% endfor %}
 </div>
 
+{% if not is_readonly %}
 <div class="card">
     <h3>Добавить группу</h3>
     <form action="/groups/add" method="POST" class="inline-form">
@@ -34,6 +35,7 @@
         <button type="submit" class="btn-primary">Добавить</button>
     </form>
 </div>
+{% endif %}
 
 <div class="card mt-20">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -58,7 +60,7 @@
                             <th>№</th>
                             <th>Название</th>
                             <th>Количество студентов</th>
-                            <th>Действия</th>
+                            {% if not is_readonly %}<th>Действия</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -67,6 +69,7 @@
                             <td>{{ loop.index }}</td>
                             <td><strong>{{ group.name }}</strong></td>
                             <td>{{ group.students_count }}</td>
+                            {% if not is_readonly %}
                             <td>
                                 <div style="display: flex; gap: 5px;">
                                     <a href="/groups/edit/{{ group.id }}" class="btn-icon text-blue" title="Редактировать">
@@ -77,6 +80,7 @@
                                     </form>
                                 </div>
                             </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -5,6 +5,7 @@
     <h2>Учебные предметы</h2>
 </div>
 
+{% if not is_readonly %}
 <div class="card">
     <h3>Добавить предмет</h3>
     <form action="/subjects/add" method="POST" class="inline-form">
@@ -25,6 +26,7 @@
         <button type="submit" class="btn-primary">Добавить</button>
     </form>
 </div>
+{% endif %}
 
 <div class="card mt-20">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -43,7 +45,7 @@
                 <th>Доска</th>
                 <th>Проектор</th>
                 <th>Язык</th>
-                <th>Действия</th>
+                {% if not is_readonly %}<th>Действия</th>{% endif %}
             </tr>
         </thead>
         <tbody>
@@ -68,6 +70,7 @@
                 <td>
                     <span class="badge">{{ "RU" if subject.language == 'ru' else "KZ" }}</span>
                 </td>
+                {% if not is_readonly %}
                 <td style="display: flex; gap: 5px;">
                     <a href="/subjects/edit/{{ subject.id }}" class="btn-icon text-blue" title="Редактировать">
                         <i class="fa-solid fa-pen"></i>
@@ -76,10 +79,11 @@
                         <button type="submit" class="btn-icon text-red" title="Удалить"><i class="fa-solid fa-trash"></i></button>
                     </form>
                 </td>
+                {% endif %}
             </tr>
             {% else %}
             <tr>
-                <td colspan="6" class="text-center">Предметов пока нет.</td>
+                <td colspan="6" class="text-center">Предметов нет.</td>
             </tr>
             {% endfor %}
         </tbody>
