@@ -9,13 +9,146 @@
 <div class="card">
     <h3>Добавить занятие</h3>
     <form action="/schedule/add" method="POST" class="grid-form">
-        <!-- ... (форма добавления занятия) ... -->
+        <div class="form-group">
+            <label>Дата</label>
+            <input type="date" name="lesson_date" required>
+        </div>
+        <div class="form-group">
+            <label>Начало</label>
+            <input type="time" name="start_time" id="start_time" required>
+        </div>
+        <div class="form-group">
+            <label>Окончание (авто +80 мин)</label>
+            <input type="time" name="end_time" id="end_time" required>
+        </div>
+        <div class="form-group">
+            <label>Группа</label>
+            <select name="group_id" required>
+                <option value="">Выберите группу</option>
+                {% for group in groups %}
+                    <option value="{{ group.id }}">{{ group.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Преподаватель</label>
+            <select name="teacher_id" required>
+                <option value="">Выберите преподавателя</option>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}">{{ teacher.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Предмет</label>
+            <select name="subject_id" required>
+                <option value="">Выберите предмет</option>
+                {% for subject in subjects %}
+                    <option value="{{ subject.id }}">{{ subject.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Аудитория</label>
+            <select name="room_id" required>
+                <option value="">Выберите кабинет</option>
+                {% for room in rooms %}
+                    <option value="{{ room.id }}">{{ room.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn-primary" style="width: 100%;">Добавить занятие</button>
+        </div>
     </form>
 </div>
 {% endif %}
 
 <div class="card mt-20">
-    <!-- ... (фильтры и таблица расписания) ... -->
-    <!-- В таблице скрыть кнопки удаления, если is_readonly -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+        <h3>Сетка расписания</h3>
+
+        <form method="GET" action="/schedule" style="display: flex; gap: 10px;">
+            <select name="group" onchange="this.form.submit()" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                <option value="">Все группы</option>
+                {% for g in groups %}
+                    <option value="{{ g.name }}" {% if current_group == g.name %}selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="teacher" onchange="this.form.submit()" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                <option value="">Все преподаватели</option>
+                {% for t in teachers %}
+                    <option value="{{ t.full_name }}" {% if current_teacher == t.full_name %}selected{% endif %}>{{ t.full_name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% set day_names = {1: "Понедельник", 2: "Вторник", 3: "Среда", 4: "Четверг", 5: "Пятница"} %}
+
+    {% for day_num, day_name in day_names.items() %}
+        {% set day_lessons = lessons | selectattr("weekday", "equalto", day_num) | list %}
+
+        {% if day_lessons %}
+            <h4 style="margin-top: 30px; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px;">
+                {{ day_name }}
+            </h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Группа</th>
+                        <th>Время</th>
+                        <th>Предмет</th>
+                        <th>Преподаватель</th>
+                        <th>Аудитория</th>
+                        {% if not is_readonly %}<th>Действия</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set ns = namespace(current_group="") %}
+                    {% for lesson in day_lessons %}
+                        {% if ns.current_group != lesson.group_name %}
+                            {% set ns.current_group = lesson.group_name %}
+                            <tr style="background: #f8fafc;">
+                                <td colspan="{% if not is_readonly %}6{% else %}5{% endif %}" style="padding: 8px; font-weight: bold; color: var(--primary);">
+                                    Группа: {{ lesson.group_name }}
+                                </td>
+                            </tr>
+                        {% endif %}
+                        <tr>
+                            <td></td>
+                            <td>{{ lesson.start_time }} — {{ lesson.end_time }}</td>
+                            <td><strong>{{ lesson.subject_name }}</strong></td>
+                            <td>{{ lesson.teacher_name }}</td>
+                            <td><strong>{{ lesson.room_name }}</strong></td>
+                            {% if not is_readonly %}
+                            <td>
+                                <form action="/schedule/delete/{{ lesson.id }}" method="POST" class="inline-action">
+                                    <button type="submit" class="btn-icon text-red" title="Отменить пару"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endfor %}
+
+    {% if not lessons %}
+        <p class="text-center" style="padding: 40px;">Расписание пока пустое.</p>
+    {% endif %}
 </div>
+
+<script>
+    document.getElementById('start_time').addEventListener('change', function() {
+        if (!this.value) return;
+        let [hours, minutes] = this.value.split(':').map(Number);
+        let date = new Date();
+        date.setHours(hours, minutes + 80);
+        let newHours = String(date.getHours()).padStart(2, '0');
+        let newMinutes = String(date.getMinutes()).padStart(2, '0');
+        document.getElementById('end_time').value = `${newHours}:${newMinutes}`;
+    });
+</script>
 {% endblock %}

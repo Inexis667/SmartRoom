@@ -491,7 +491,6 @@ def has_conflict(db, lesson_date, start_time, end_time, field, value):
 def schedule():
     group_filter = request.args.get("group", "")
     teacher_filter = request.args.get("teacher", "")
-    shift_filter = request.args.get("shift", "")  # 1 или 2
 
     with get_connection() as db:
         groups = db.execute("SELECT * FROM groups ORDER BY name").fetchall()
@@ -525,12 +524,6 @@ def schedule():
             conditions.append("teachers.full_name = ?")
             params.append(teacher_filter)
 
-        # ФИЛЬТР ПО СМЕНЕ
-        if shift_filter == "1":
-            conditions.append("start_time < '12:00'")
-        elif shift_filter == "2":
-            conditions.append("start_time >= '12:00'")
-
         if conditions:
             query += " AND " + " AND ".join(conditions)
 
@@ -545,8 +538,7 @@ def schedule():
                            rooms=rooms,
                            lessons=lessons,
                            current_group=group_filter,
-                           current_teacher=teacher_filter,
-                           current_shift=shift_filter)
+                           current_teacher=teacher_filter)
 
 @app.route("/schedule/add", methods=["POST"])
 def add_lesson():
