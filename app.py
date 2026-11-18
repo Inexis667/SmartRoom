@@ -665,6 +665,15 @@ def stats():
 
     return render_template("stats.html", room_names=room_names, lesson_counts=lesson_counts)
 
+@app.route("/check-db")
+def check_db():
+    with get_connection() as db:
+        groups = db.execute("SELECT COUNT(*) FROM groups").fetchone()[0]
+        teachers = db.execute("SELECT COUNT(*) FROM teachers").fetchone()[0]
+        subjects = db.execute("SELECT COUNT(*) FROM subjects").fetchone()[0]
+        rooms = db.execute("SELECT COUNT(*) FROM rooms").fetchone()[0]
+        lessons = db.execute("SELECT COUNT(*) FROM lessons").fetchone()[0]
+    return f"Группы: {groups}, Преподаватели: {teachers}, Предметы: {subjects}, Аудитории: {rooms}, Занятия: {lessons}"
 
 if __name__ == "__main__":
     app.run(debug=True)
